@@ -1,0 +1,135 @@
+
+#define VOLTAGE 5.0 // 아두이노 전원 전압
+#include <TimerOne.h>
+
+const int numReadings = 100;    
+
+int readings[numReadings];      // 아날로그 인풋 reading
+
+int readIndex = 0;              // 현재 읽어들이는 원소
+
+long int total = 0;             // 총 돌아가는 횟수
+
+int latest_reading = 0;         // 현재 읽어들이는 값 
+
+int average_reading = 0;        // 평균값
+
+int dustPin = A0;
+
+
+
+
+void setup()  
+
+{    
+
+  Serial.begin(9600);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(2, INPUT_PULLUP);
+
+  
+
+
+  Timer1.initialize(10000); // Set a timer of length 10000 microseconds (or 10ms - or 100Hz)
+
+  Timer1.pwm(10, 991); // Set active high PWM of (10 - 0.32) * 1024 = 991
+
+  Timer1.pwm(9, 999); // Set active high PWM of (10 - 0.28) * 1024 = 995 BUT requires a fiddle factor making it 999
+
+  
+
+
+  attachInterrupt(0, takeReading, RISING); // Sample A0 on the rising edge of OC1A
+
+
+
+
+
+  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+
+     readings[thisReading] = 0;
+
+   }
+
+}
+
+
+
+
+
+void takeReading() {
+
+
+   total = total - readings[readIndex];
+
+
+
+   latest_reading = analogRead(dustPin);
+
+   readings[readIndex] = latest_reading;
+
+
+   total = total + latest_reading;
+
+
+   readIndex = readIndex + 1;
+
+
+
+   // 배열이 끝났다면 다시 처음으로 돌아간다:
+
+   if (readIndex >= numReadings) readIndex = 0;
+
+
+
+   // 평균 구하기:
+
+   average_reading = total / numReadings;
+
+}
+
+
+
+// Main loop
+
+
+
+uint32_t timer = millis();
+
+
+
+void loop()                     // 무한반복
+
+{
+
+
+
+  if (timer > millis())  timer = millis();
+
+
+
+
+  if (millis() - timer > 1000) { 
+
+    timer = millis(); // 타이머리셋
+
+
+
+    float latest_dust = latest_reading * (VOLTAGE / 1023.0);
+
+
+    float average_dust = average_reading * (VOLTAGE/ 1023.0);
+
+
+
+    Serial.print("현재 미세먼지값 (V): ");
+
+    Serial.print(latest_dust);
+
+    Serial.print("평균 미세먼지값 (V): ");
+
+    Serial.println(average_dust);
+
+  }
+}
